@@ -1,0 +1,10 @@
+---
+- hosts: last-try.org
+  tasks:
+    - name: Installig docker
+      portage:
+        package: docker
+        state: present
+    - name: Init a new swarm with default parameters
+      docker_swarm:
+        state: present

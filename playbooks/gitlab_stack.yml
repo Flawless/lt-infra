@@ -1,0 +1,125 @@
+---
+
+- hosts: last-try.org
+  vars:
+    stack_name: gitlab
+    stack_dir_root: "/home/{{ ansible_user }}/stacks"
+    stack_nfs_root: "/docker-swarm/gitlab"
+    stack_dir: "{{ stack_dir_root }}/{{ stack_name }}"
+  tasks:
+    - name: Copy configs
+      copy:
+        src: "{{ stack_name }}/gitlab.rb"
+        dest: "{{ stack_dir }}/gitlab.rb"
+    - name: Create NFS dirs
+      file:
+        path: "/srv/nfs/docker-swarm/gitlab/{{ item }}"
+        state: directory
+        mode: "0777"
+      become: yes
+      with_items:
+        - gitlab/data
+        - gitlab/logs
+        - gitlab/config
+        - gitlab/backups
+        - postgres
+    - name: Copy secrets
+      copy:
+        src: "{{ stack_name }}/gitlab-secrets.json"
+        dest: "/srv/nfs/docker-swarm/gitlab/gitlab/config/gitlab-secrets.json"
+        mode: '0600'
+    - name: Deploy GitLab
+      docker_stack:
+        state: present
+        name: "{{ stack_name }}"
+        compose:
+          - version: "3.7"
+            services:
+              gitlab:
+                image: gitlab/gitlab-ce:latest
+                deploy:
+                  restart_policy:
+                    condition: any
+                  labels:
+                    - "traefik.docker.network=web"
+                    - "traefik.enable=true"
+                    - "traefik.gitlab.frontend.rule=Host:gitlab.last-try.org"
+                    - "traefik.gitlab.port=80"
+                    - "traefik.registry.frontend.rule=Host:registry.last-try.org"
+                    - "traefik.registry.port=5000"
+                hostname: 'gitlab.smtusdb.org'
+                ports:
+                  - '10022:10022'
+                environment:
+                  - LISTENER_ADDRESS=swarm-listener
+                  - MODE=swarm
+                configs:
+                  - source: "gitlab.rb"
+                    target: "/etc/gitlab/gitlab.rb"
+                volumes:
+                  - gitlab_data:/var/opt/gitlab
+                  - gitlab_logs:/var/log/gitlab
+                  - gitlab_config:/etc/gitlab
+                  - gitlab_backups:/var/opt/gitlab/backups
+                networks:
+                  - default
+                  - web
+                  # - smtp
+              redis:
+                deploy:
+                  restart_policy:
+                    condition: any
+                image: "redis:4.0.6-alpine"
+              postgres:
+                deploy:
+                  restart_policy:
+                    condition: any
+                image: "postgres:10.7-alpine"
+                volumes:
+                  - "postgres_data:/data"
+                environment:
+                  POSTGRES_USER: gitlab
+                  POSTGRES_PASSWORD: gitlab
+                  PGDATA: /data
+                  POSTGRES_DB: gitlab
+
+            volumes:
+              gitlab_data:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr=127.0.0.1"
+                  device: ":{{ stack_nfs_root }}/gitlab/data"
+              gitlab_logs:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr=127.0.0.1"
+                  device: ":{{ stack_nfs_root }}/gitlab/logs"
+              gitlab_config:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr=127.0.0.1"
+                  device: ":{{ stack_nfs_root }}/gitlab/config"
+              gitlab_backups:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr=127.0.0.1"
+                  device: ":{{ stack_nfs_root }}/gitlab/backups"
+              postgres_data:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr=127.0.0.1"
+                  device: ":{{ stack_nfs_root }}/postgres"
+
+            configs:
+              gitlab.rb:
+                file: "{{ stack_dir }}/gitlab.rb"
+            networks:
+              web:
+                external: true
+              # smtp:
+              #   external: true

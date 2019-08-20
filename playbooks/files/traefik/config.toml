@@ -1,0 +1,34 @@
+debug = false
+logLevel = "ERROR"
+defaultEntryPoints = ["http", "https"]
+
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+    [entryPoints.http.redirect]
+    entryPoint = "https"
+  [entryPoints.https]
+  address = ":443"
+  [entryPoints.https.tls]
+
+[retry]
+
+[api]
+
+[ping]
+
+[docker]
+endpoint = "tcp://127.0.0.1:2377"
+domain = "last-try.org"
+watch = true
+exposedByDefault = false
+swarmMode = True
+network = "web"
+
+[acme]
+email = "alushanov92@gmail.com"
+storage = "acme.json"
+entryPoint = "https"
+onHostRule = true
+[acme.httpChallenge]
+entryPoint = "http"

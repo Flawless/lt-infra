@@ -1,0 +1,70 @@
+---
+
+- hosts: last-try.org
+  vars:
+    stack_name: traefik
+    stack_dir_root: "/home/{{ ansible_user }}/stacks"
+    stack_dir: "{{ stack_dir_root }}/{{ stack_name }}"
+  tasks:
+    - name: Create NFS dirs
+      file:
+        path: /srv/nfs/docker-swarm/traefik_stack/acme_data
+        state: directory
+        mode: "0777"
+      become: yes
+    - name: Create network web
+      docker_network:
+        name: web
+        driver: overlay
+    - name: Deploy traefik
+      docker_stack:
+        state: present
+        name: "{{ stack_name }}"
+        compose:
+          - version: '3.7'
+            services:
+              traefik:
+                image: traefik # The official Traefik docker image
+                deploy:
+                  restart_policy:
+                    condition: any
+                  labels:
+                    - "traefik.enable=true"
+                    - "traefik.frontend.rule=Host:traefik.last-try.org"
+                    - "traefik.port=8080"
+                    - "traefik.frontend.auth.basic.users=admin:$$2y$$05$$j/9gOK/CRsNQgb6O9UrjcuDP9w7Ud4SX8YtAxS8jXvLHsret6AvaS"
+                command:
+                  - "--api"
+                  - "--entrypoints=Name:http Address::80 Redirect.EntryPoint:https"
+                  - "--entrypoints=Name:https Address::443 TLS"
+                  - "--defaultentrypoints=http,https"
+                  - "--acme"
+                  - "--acme.storage=/etc/traefik/acme/acme.json"
+                  - "--acme.entryPoint=https"
+                  - "--acme.httpChallenge.entryPoint=http"
+                  - "--acme.onHostRule=true"
+                  - "--acme.onDemand=false"
+                  - "--acme.email=alushanov92@gmail.com"
+                  - "--docker"
+                  - "--docker.swarmMode"
+                  - "--docker.domain=last-try.org"
+                  - "--docker.watch"
+                ports:
+                  - "80:80"     # The HTTP port
+                  - "443:443"
+                  - "8080:8080" # The Web UI (enabled by --api)
+                networks:
+                  - web
+                volumes:
+                  - traefik_acme:/etc/traefik/acme
+                  - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
+            networks:
+              web:
+                external: true
+            volumes:
+              traefik_acme:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr=127.0.0.1"
+                  device: ":/docker-swarm/traefik_stack/acme_data"
