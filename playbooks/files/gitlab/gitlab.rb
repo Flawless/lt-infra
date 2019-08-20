@@ -30,6 +30,7 @@ gitlab_rails['db_host'] = "postgres"
 gitlab_rails['db_database'] = "gitlab"
 gitlab_rails['db_username'] = "gitlab"
 gitlab_rails['db_password'] = "gitlab"
+gitlab_rails['gitlab_shell_ssh_port'] = 10022
 
 # Redis settings
 # redis service will be named "redis" in the stack
