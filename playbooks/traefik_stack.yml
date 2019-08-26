@@ -28,9 +28,13 @@
                 deploy:
                   restart_policy:
                     condition: any
+                  placement:
+                    constraints:
+                      - node.role == manager
                   labels:
                     - "traefik.enable=true"
                     - "traefik.frontend.rule=Host:traefik.last-try.org"
+                    - "traefik.docker.network=web"
                     - "traefik.port=8080"
                     - "traefik.frontend.auth.basic.users=admin:$$2y$$05$$j/9gOK/CRsNQgb6O9UrjcuDP9w7Ud4SX8YtAxS8jXvLHsret6AvaS"
                 command:
@@ -49,6 +53,7 @@
                   - "--docker.swarmMode"
                   - "--docker.domain=last-try.org"
                   - "--docker.watch"
+                  - "--loglevel=DEBUG"
                 ports:
                   - "80:80"     # The HTTP port
                   - "443:443"
@@ -66,5 +71,5 @@
                 driver: local
                 driver_opts:
                   type: nfs4
-                  o: "addr=127.0.0.1"
+                  o: "addr={{ nfs_ip }}"
                   device: ":/docker-swarm/traefik_stack/acme_data"

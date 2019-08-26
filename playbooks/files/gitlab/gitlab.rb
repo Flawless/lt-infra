@@ -7,7 +7,7 @@ registry_external_url 'https://registry.last-try.org'
 # disabling ssl
 nginx['listen_port'] = 80
 nginx['listen_https'] = false
-registry_nginx['listen_port'] = 5000
+registry_nginx['listen_port'] = 5003
 registry_nginx['listen_https'] = false
 
 # Unicorns
