@@ -20,6 +20,7 @@ redis['enable'] = false
 prometheus['enable'] = false
 postgres_exporter['enable'] = false
 redis_exporter['enable'] = false
+grafana['enable'] = false
 
 # Postgres settings
 gitlab_rails['db_adapter'] = "postgresql"
