@@ -1,0 +1,6 @@
+stack_dir_root: "/home/{{ ansible_user }}/stacks"
+nfs_root: "/exports"
+nfs_mount_dst: "/exports/"
+nfs_mount_src: "/srv/nfs/docker-swarm"
+nfs_swarm_root: "/docker-swarm"
+nfs_swarm_fs_dir: "{{ nfs_mount_dst }}/docker-swarm"

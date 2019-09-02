@@ -3,9 +3,9 @@
 - hosts: last-try.org
   vars:
     stack_name: gitlab
-    stack_dir_root: "/home/{{ ansible_user }}/stacks"
-    stack_nfs_root: "/docker-swarm/gitlab"
     stack_dir: "{{ stack_dir_root }}/{{ stack_name }}"
+    nfs_dir: "{{ nfs_swarm_fs_dir }}/{{ stack_name }}"
+    stack_nfs_root: "{{ nfs_swarm_root }}/{{ stack_name }}"
   tasks:
     - name: Copy configs
       copy:
@@ -36,7 +36,7 @@
           - version: "3.7"
             services:
               gitlab:
-                image: gitlab/gitlab-ce:11.5.0-ce.0
+                image: gitlab/gitlab-ce:12.2.1-ce.0
                 deploy:
                   restart_policy:
                     condition: any
@@ -65,6 +65,7 @@
                   - gitlab_backups:/var/opt/gitlab/backups
                 networks:
                   - web
+                  - default
                   # - smtp
               redis:
                 deploy:
