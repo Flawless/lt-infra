@@ -1,0 +1,36 @@
+- hosts: last-try.org
+  tasks:
+    - name: setup borg
+      include_role:
+        name: SphericalElephant.borgbackup
+      vars:
+        ansible_become: yes
+        borgbackup_binary: "/usr/bin/borg"
+        borgbackup_install_from_binary: False
+        borgbackup_install_from_repo: True
+        borgbackup_passphrase: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          31323966363639356139633563633432666231313736363632376262363336303966663066386633
+          3239303563353630613331363862633361316562356237640a303636343833613032663363656264
+          30623836373537306565636633383064383265326361666164383364613536306134653835346239
+          3966326334373332350a373039633761306533333339333062613138363563323130343064663864
+          3930
+        borgbackup_client: True
+        borgbackup_encryption_mode: "repokey"
+        borgbackup_client_backup_server: naxx.dnouglublenie.ru
+        borgbackup_client_backup_server_port: 10206
+        borgbackup_client_jobs:
+          - name: lt-system
+            day: "*"
+            hour: "3"
+            minute: "{{ 59 | random }}"
+            directories:
+              - /srv/nfs
+            excludes: []
+        borgbackup_prune_jobs:
+          - name: lt-system
+            prune_options: "--keep-daily=7 --keep-weekly=4"
+            day: "*"
+            hour: "8"
+            minute: "0"
+        borgbackup_server_home: "/var/backup/borgbackup/"
