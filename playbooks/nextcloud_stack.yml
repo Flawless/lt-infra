@@ -1,0 +1,152 @@
+---
+- hosts: last-try.org
+  vars:
+    stack_name: nextcloud
+    stack_dir: "{{ stack_dir_root }}/{{ stack_name }}"
+    nfs_dir: "{{ nfs_swarm_fs_dir }}/{{ stack_name }}"
+    stack_nfs_root: "{{ nfs_swarm_root }}/{{ stack_name }}"
+  tasks:
+    - name: Creating config dir
+      file:
+        path: "{{ stack_dir }}"
+        state: directory
+    - name: Copy configs
+      copy:
+        src: "{{ stack_name }}/nginx.conf"
+        dest: "{{ stack_dir }}/nginx.conf"
+    - name: Create NFS dirs
+      file:
+        path: "{{ nfs_dir }}/{{ item }}"
+        state: directory
+        mode: "0777"
+      become: yes
+      with_items:
+        - nextcloud/html
+        - nextcloud/apps
+        - nextcloud/config
+        - nextcloud/data
+        - postgres/data
+    - name: Deploying Nextcloud stack
+      docker_stack:
+        state: present
+        name: "{{ stack_name }}"
+        compose:
+          - version: "3.7"
+            services:
+              nextcloud:
+                image: nextcloud:16.0.4-fpm
+                deploy:
+                  restart_policy:
+                    condition: any
+                environment:
+                  POSTGRES_HOST: db
+                  POSTGRES_USER: nextcloud
+                  POSTGRES_PASSWORD: nextcloud
+                  POSTGRES_DB: nextcloud
+                volumes:
+                  - "nextcloud_html:/var/www/html"
+                  - "nextcloud_apps:/var/www/html/custom_apps"
+                  - "nextcloud_config:/var/www/html/config"
+                  - "nextcloud_data:/var/www/html/data"
+              db:
+                image: "postgres:10-alpine"
+                deploy:
+                  restart_policy:
+                    condition: any
+                environment:
+                  POSTGRES_USER: nextcloud
+                  POSTGRES_PASSWORD: nextcloud
+                  PGDATA: /data
+                volumes:
+                  - "postgres_data:/data"
+              web:
+                image: nginx
+                deploy:
+                  restart_policy:
+                    condition: any
+                  labels:
+                    - "traefik.docker.network=web"
+                    - "traefik.enable=true"
+                    - "traefik.frontend.rule=Host:cloud.last-try.org"
+                    - "traefik.port=80"
+                networks:
+                  - default
+                  - web
+                  # - smtp
+                configs:
+                  - source: "nginx.conf"
+                    target: "/etc/nginx/nginx.conf"
+                depends_on:
+                  - nextcloud
+                volumes:
+                  - "nextcloud_html:/var/www/html"
+                  - "nextcloud_apps:/var/www/html/custom_apps"
+                  - "nextcloud_config:/var/www/html/config"
+                  - "nextcloud_data:/var/www/html/data"
+
+              redis:
+                image: "redis:alpine"
+                deploy:
+                  restart_policy:
+                    condition: any
+
+              cron:
+                image: "nextcloud"
+                deploy:
+                  restart_policy:
+                    condition: any
+                volumes:
+                  - "nextcloud_html:/var/www/html"
+                user: www-data
+                entrypoint: |
+                  bash -c 'bash -s <<EOF
+                    trap "break;exit" SIGHUP SIGINT SIGTERM
+                    while [ ! -f /var/www/html/config/config.php ]; do
+                      sleep 1
+                    done
+                    while true; do
+                      php -f /var/www/html/cron.php
+                      sleep 15m
+                    done
+                  EOF'
+            configs:
+              nginx.conf:
+                file: "{{ stack_dir}}/nginx.conf"
+
+            volumes:
+              nextcloud_html:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr={{ nfs_ip }}"
+                  device: ":{{ stack_nfs_root }}/nextcloud/html"
+              nextcloud_apps:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr={{ nfs_ip }}"
+                  device: ":{{ stack_nfs_root }}/nextcloud/apps"
+              nextcloud_config:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr={{ nfs_ip }}"
+                  device: ":{{ stack_nfs_root }}/nextcloud/config"
+              nextcloud_data:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr={{ nfs_ip }}"
+                  device: ":{{ stack_nfs_root }}/nextcloud/data"
+              postgres_data:
+                driver: local
+                driver_opts:
+                  type: nfs4
+                  o: "addr={{ nfs_ip }}"
+                  device: ":{{ stack_nfs_root }}/postgres/data"
+
+            networks:
+              web:
+                external: true
+              # smtp:
+              #   external: true

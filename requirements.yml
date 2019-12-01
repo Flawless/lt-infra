@@ -1,0 +1,3 @@
+---
+- src: https://github.com/cloudalchemy/ansible-node-exporter
+- src: git+https://github.com/mrlesmithjr/ansible-nfs-server.git

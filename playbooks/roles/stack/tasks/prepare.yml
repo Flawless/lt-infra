@@ -1,0 +1,37 @@
+---
+- name: Create NFS root
+  file:
+    path: "{{ stack__nfs_root }}"
+    state: directory
+    mode: '0777'
+
+- name: Create directories volumes
+  file:
+    path: "{{ stack__nfs_root }}/{{ stack__name }}"
+    state: directory
+    mode: '0777'
+
+- name: Create directories volumes
+  file:
+    path: "{{ stack__nfs_root }}/{{ stack__name }}/{{ item }}"
+    state: directory
+    mode: '0777'
+  with_items:
+    - "{{ stack__volumes }}"
+
+- name: Mount and bind volumes
+  mount:
+    path: "{{ stack__nfs_stack_root_export }}"
+    src: "{{ stack__nfs_stack_root }}"
+    opts: bind
+    state: mounted
+    fstype: none
+
+- name: Export NFS
+  include_role:
+    name: ansible-nfs-server
+  vars:
+    nfs_server_export_directories:
+      - path: "{{ stack__nfs_stack_root_export }}"
+        clients:
+          - "*(rw,sync,no_root_squash,no_subtree_check)"

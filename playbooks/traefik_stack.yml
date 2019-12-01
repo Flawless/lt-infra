@@ -23,8 +23,25 @@
         compose:
           - version: '3.7'
             services:
+              traefik-metrics:
+                image: metalmatze/traefik-exporter
+                deploy:
+                  restart_policy:
+                    condition: any
+                  placement:
+                    constraints:
+                      - node.role == manager
+                  labels:
+                    - "traefik.docker.network=web"
+                    - "traefik.enable=true"
+                    - "traefik.frontend.rule=Host:traefik.last-try.org;PathPrefixStrip:/metrics;AddPrefix:/metrics"
+                    - "traefik.port=9000"
+                depends_on:
+                  - traefik
+                command:
+                  "-traefik.address=http://traefik:8080/health"
               traefik:
-                image: traefik # The official Traefik docker image
+                image: traefik:v1.7 # The official Traefik docker image
                 deploy:
                   restart_policy:
                     condition: any
@@ -53,7 +70,6 @@
                   - "--docker.swarmMode"
                   - "--docker.domain=last-try.org"
                   - "--docker.watch"
-                  - "--loglevel=DEBUG"
                 ports:
                   - "80:80"     # The HTTP port
                   - "443:443"

@@ -1,0 +1,14 @@
+---
+
+- name: Copy directory tree
+  copy:
+    src: "{{ stack__deployed_dir }}"
+    dest: "{{ stack__dst_root }}"
+    decrypt: yes
+  become: no
+
+- name: Install deps
+  pip:
+    name:
+      - jsondiff
+      - pyyaml

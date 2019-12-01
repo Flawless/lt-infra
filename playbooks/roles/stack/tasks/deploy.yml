@@ -1,0 +1,19 @@
+---
+
+- name: Create networks
+  docker_network:
+    name: "{{ item }}"
+    # scope: swarm
+    driver: overlay
+  with_items:
+    - "{{ stack__networks }}"
+  when: stack__networks is defined
+  become: no
+
+- name: Deploy stack from file
+  docker_stack:
+    state: present
+    name: "{{ stack__name }}"
+    compose:
+    - "{{ stack__dst_root }}/{{ stack__name }}/{{ stack__compose_file }}"
+  become: no

@@ -1,0 +1,9 @@
+---
+# tasks file for stack
+- include: install.yml
+  tags: ['install', 'stack']
+- include: prepare.yml
+  tags: ['install', 'stack']
+  when: stack__volumes is defined
+- include: deploy.yml
+  tags: stack

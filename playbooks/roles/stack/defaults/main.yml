@@ -1,0 +1,19 @@
+---
+# defaults file for proxy-stack
+stack__dst_root: "/home/{{ ansible_user }}/stacks"
+stack__nfs_root: "/srv/data/docker-nfs"
+stack__nfs_root_export: "/exports"
+
+stack__name:
+stack__deployed_dir: "{{ stack__name }}"
+stack__compose_file: "stack.yml"
+
+# NFS dirs names
+
+stack__nfs_stack_root: "{{ stack__nfs_root }}/{{ stack__name }}"
+stack__nfs_stack_root_export: "{{ stack__nfs_root_export }}/{{ stack__name }}"
+
+# # Docker volumes
+# stack__volumes:
+# # Docker networks
+# stack__networks:

@@ -36,7 +36,7 @@
           - version: "3.7"
             services:
               gitlab:
-                image: gitlab/gitlab-ce:12.2.1-ce.0
+                image: gitlab/gitlab-ce:12.4.3-ce.0
                 deploy:
                   restart_policy:
                     condition: any
