@@ -40,14 +40,12 @@
                   restart_policy:
                     condition: any
                   labels:
-                    - "traefik.docker.network=web"
-                    - "traefik.enable=true"
-                    - "traefik.port=9980"
-                    - "traefik.frontend.rule=Host:docs.last-try.org"
-                    - "traefik.frontend.passHostHeader=true"
-                    - "traefik.frontend.headers.forceSTSHeader=true"
-                    - "traefik.frontend.headers.STSSeconds=31536000"
-                    - "traefik.frontend.headers.STSIncludeSubdomains=true"
+                    - traefik.enable=true
+                    - traefik.http.services.collabora-svc.loadbalancer.server.port=9980
+                    - traefik.http.routers.collabora.service=collabore-svc
+                    - traefik.http.routers.collabora.rule=Host(`docs.last-try.org`)
+                    - traefik.http.routers.collabora.tls=true
+                    - traefik.http.routers.collabora.tls.certresolver=le
                 networks:
                   - web
                   - default
