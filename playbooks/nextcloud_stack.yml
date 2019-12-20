@@ -34,6 +34,29 @@
         compose:
           - version: "3.7"
             services:
+              collabora:
+                image: collabora/code
+                deploy:
+                  restart_policy:
+                    condition: any
+                  labels:
+                    - "traefik.docker.network=web"
+                    - "traefik.enable=true"
+                    - "traefik.port=9980"
+                    - "traefik.frontend.rule=Host:docs.last-try.org"
+                    - "traefik.frontend.passHostHeader=true"
+                    - "traefik.frontend.headers.forceSTSHeader=true"
+                    - "traefik.frontend.headers.STSSeconds=31536000"
+                    - "traefik.frontend.headers.STSIncludeSubdomains=true"
+                networks:
+                  - web
+                  - default
+                environment:
+                  domain: cloud\\.last\\-try.org
+                  DONT_GEN_SSL_CERT: set
+                  extra_params: --o:ssl.enable=false --o:ssl.termination=true
+                cap_add:
+                  - MKNOD
               nextcloud:
                 image: nextcloud:17.0.2-fpm
                 deploy:
