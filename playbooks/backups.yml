@@ -22,14 +22,14 @@
         borgbackup_client_jobs:
           - name: lt-system
             day: "*"
-            hour: "3"
+            hour: "*/3"
             minute: "{{ 59 | random }}"
             directories:
               - /srv/nfs
             excludes: []
         borgbackup_prune_jobs:
           - name: lt-system
-            prune_options: "--keep-daily=7 --keep-weekly=4 --keep-monthly 12"
+            prune_options: "--keep-hourly 8 --keep-daily=7 --keep-weekly=4 --keep-monthly 12"
             day: "*"
             hour: "8"
             minute: "0"
