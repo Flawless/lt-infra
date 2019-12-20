@@ -31,6 +31,7 @@
     - name: Deploy GitLab
       docker_stack:
         state: present
+        prune: true
         name: "{{ stack_name }}"
         compose:
           - version: "3.7"
@@ -43,14 +44,18 @@
                   placement:
                     constraints: [node.role == manager]
                   labels:
-                    - "traefik.docker.network=web"
-                    - "traefik.enable=true"
-                    - "traefik.gitlab.frontend.rule=Host:gitlab.last-try.org"
-                    - "traefik.gitlab.port=80"
-                    - "traefik.registry.frontend.rule=Host:registry.last-try.org"
-                    - "traefik.registry.port=5003"
-                hostname: 'gitlab.smtusdb.org'
-                ports:
+                    - traefik.enable=true
+                    - traefik.http.services.gitlab-svc.loadbalancer.server.port=80
+                    - traefik.http.services.registry-svc.loadbalancer.server.port=5003
+                    - traefik.http.routers.gitlab.service=gitlab-svc
+                    - traefik.http.routers.gitlab.rule=Host(`gitlab.last-try.org`)
+                    - traefik.http.routers.gitlab.tls=true
+                    - traefik.http.routers.gitlab.tls.certresolver=le
+                    - traefik.http.routers.registry.service=registry-svc
+                    - traefik.http.routers.registry.rule=Host(`registry.last-try.org`)
+                    - traefik.http.routers.registry.tls=true
+                    - traefik.http.routers.registry.tls.certresolver=le
+                ports: # TODO move to TCP traefik
                   - target: 22
                     published: 10022
                     protocol: tcp

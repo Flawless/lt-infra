@@ -19,29 +19,13 @@
     - name: Deploy traefik
       docker_stack:
         state: present
+        prune: true
         name: "{{ stack_name }}"
         compose:
           - version: '3.7'
             services:
-              traefik-metrics:
-                image: metalmatze/traefik-exporter
-                deploy:
-                  restart_policy:
-                    condition: any
-                  placement:
-                    constraints:
-                      - node.role == manager
-                  labels:
-                    - "traefik.docker.network=web"
-                    - "traefik.enable=true"
-                    - "traefik.frontend.rule=Host:traefik.last-try.org;PathPrefixStrip:/metrics;AddPrefix:/metrics"
-                    - "traefik.port=9000"
-                depends_on:
-                  - traefik
-                command:
-                  "-traefik.address=http://traefik:8080/health"
               traefik:
-                image: traefik:v1.7 # The official Traefik docker image
+                image: traefik:v2.1 # The official Traefik docker image
                 deploy:
                   restart_policy:
                     condition: any
@@ -49,31 +33,54 @@
                     constraints:
                       - node.role == manager
                   labels:
-                    - "traefik.enable=true"
-                    - "traefik.frontend.rule=Host:traefik.last-try.org"
-                    - "traefik.docker.network=web"
-                    - "traefik.port=8080"
-                    - "traefik.frontend.auth.basic.users=admin:$$2y$$05$$j/9gOK/CRsNQgb6O9UrjcuDP9w7Ud4SX8YtAxS8jXvLHsret6AvaS"
+                    - traefik.enable=true
+                    - traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)
+                    - traefik.http.routers.http-catchall.entrypoints=web
+                    - traefik.http.routers.http-catchall.middlewares=redirect-to-https@docker
+                    - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+
+                    - traefik.http.routers.api.rule=Host(`traefik.last-try.org`)
+                    - traefik.http.routers.api.service=api@internal
+                    - traefik.http.routers.api.middlewares=auth
+                    - traefik.http.routers.api.tls=true
+                    - traefik.http.middlewares.auth.basicauth.users=admin:$$2y$$05$$j/9gOK/CRsNQgb6O9UrjcuDP9w7Ud4SX8YtAxS8jXvLHsret6AvaS
+                    - traefik.http.services.dummy-svc.loadbalancer.server.port=1488
+                    - traefik.http.routers.api.tls.certresolver=le
+
+                    - traefik.http.routers.prometheus-traefik.rule=Host(`traefik.last-try.org`) && Path(`/metrics`)
+                    - traefik.http.routers.prometheus-traefik.entrypoints=metrics
+                    - traefik.http.routers.prometheus-traefik.service=prometheus@internal
                 command:
-                  - "--api"
-                  - "--entrypoints=Name:http Address::80 Redirect.EntryPoint:https"
-                  - "--entrypoints=Name:https Address::443 TLS"
-                  - "--defaultentrypoints=http,https"
-                  - "--acme"
-                  - "--acme.storage=/etc/traefik/acme/acme.json"
-                  - "--acme.entryPoint=https"
-                  - "--acme.httpChallenge.entryPoint=http"
-                  - "--acme.onHostRule=true"
-                  - "--acme.onDemand=false"
-                  - "--acme.email=alushanov92@gmail.com"
-                  - "--docker"
-                  - "--docker.swarmMode"
-                  - "--docker.domain=last-try.org"
-                  - "--docker.watch"
+                  - --api=true
+                  # - --log.level=DEBUG # debug while we get it working, for more levels/info see https://docs.traefik.io/observability/logs/
+                  - --providers.docker=true
+                  - --providers.docker.watch=true
+                  - --providers.docker.swarmMode=true
+                  - --providers.docker.exposedbydefault=false
+                  - --providers.docker.network=web
+                  - --entrypoints.web.address=:80
+                  - --entrypoints.websecure.address=:443
+                  - --entrypoints.metrics.address=:8080
+                  - --certificatesresolvers.le.acme.email=admin@last-try.org
+                  - --certificatesresolvers.le.acme.storage=/etc/traefik/acme/acme.json
+                  - --certificatesresolvers.le.acme.httpChallenge.entryPoint=websecure
+                  # - --certificatesresolvers.le.acme.httpchallenge=true
+
+                  # - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+                  - --certificatesresolvers.le.acme.tlschallenge=true
+                  # - --certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+                  - --metrics.prometheus=true
+                  - --metrics.prometheus.manualrouting=true
                 ports:
-                  - "80:80"     # The HTTP port
-                  - "443:443"
-                  - "8080:8080" # The Web UI (enabled by --api)
+                  - target: 80
+                    published: 80
+                    mode: host
+                  - target: 443
+                    published: 443
+                    mode: host
+                  - target: 8080
+                    published: 8080
+                    mode: host
                 networks:
                   - web
                 volumes:

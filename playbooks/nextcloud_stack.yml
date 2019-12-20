@@ -29,12 +29,13 @@
     - name: Deploying Nextcloud stack
       docker_stack:
         state: present
+        prune: true
         name: "{{ stack_name }}"
         compose:
           - version: "3.7"
             services:
               nextcloud:
-                image: nextcloud:16.0.4-fpm
+                image: nextcloud:17.0.2-fpm
                 deploy:
                   restart_policy:
                     condition: any
@@ -65,10 +66,12 @@
                   restart_policy:
                     condition: any
                   labels:
-                    - "traefik.docker.network=web"
-                    - "traefik.enable=true"
-                    - "traefik.frontend.rule=Host:cloud.last-try.org"
-                    - "traefik.port=80"
+                    - traefik.enable=true
+                    - traefik.http.services.nextcloud-svc.loadbalancer.server.port=80
+                    - traefik.http.routers.nextcloud.service=nextcloud-svc
+                    - traefik.http.routers.nextcloud.rule=Host(`cloud.last-try.org`)
+                    - traefik.http.routers.nextcloud.tls=true
+                    - traefik.http.routers.nextcloud.tls.certresolver=le
                 networks:
                   - default
                   - web
